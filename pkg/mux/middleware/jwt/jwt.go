@@ -18,7 +18,7 @@ const (
 	SourceCookie
 )
 
-func JWT(source int, payloadType reflect.Type, secret jwtcore.Secret) func(next http.HandlerFunc) http.HandlerFunc {
+func JWT(source int, redirect bool, redirectUrl string, payloadType reflect.Type, secret jwtcore.Secret) func(next http.HandlerFunc) http.HandlerFunc {
 	return func(next http.HandlerFunc) http.HandlerFunc {
 		return func(writer http.ResponseWriter, request *http.Request) {
 			token := ""
@@ -58,6 +58,10 @@ func JWT(source int, payloadType reflect.Type, secret jwtcore.Secret) func(next 
 			}
 
 			if !ok {
+				if redirect {
+					http.Redirect(writer, request, redirectUrl, http.StatusTemporaryRedirect)
+					return
+				}
 				http.Error(writer, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
 				return
 			}
