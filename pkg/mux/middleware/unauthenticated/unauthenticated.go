@@ -1,14 +1,14 @@
-package authenticated
+package unauthenticated
 
 import (
 	"context"
 	"net/http"
 )
 
-func Authenticated(auth func(ctx context.Context) bool, redirect bool, redirectURL string) func(next http.HandlerFunc) http.HandlerFunc {
+func Unauthenticated(auth func(ctx context.Context) bool, redirect bool, redirectURL string) func(next http.HandlerFunc) http.HandlerFunc {
 	return func(next http.HandlerFunc) http.HandlerFunc {
 		return func(writer http.ResponseWriter, request *http.Request) {
-			if auth(request.Context()) {
+			if !auth(request.Context()) {
 				next(writer, request)
 				return
 			}
