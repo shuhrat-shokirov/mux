@@ -1,4 +1,4 @@
-package authenticated
+package unauthenticated
 
 import (
 	"context"
