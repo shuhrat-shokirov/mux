@@ -1,8 +1,8 @@
 package jwt
 
 import (
-	jwtcore "github.com/shuhrat-shokirov/jwt/pkg/cmd"
 	"context"
+	jwtcore "github.com/shuhrat-shokirov/jwt/pkg/cmd"
 	"log"
 	"net/http"
 	"reflect"
@@ -13,21 +13,43 @@ import (
 type contextKey string // int?
 var payloadContextKey = contextKey("jwt")
 
-func JWT(payloadType reflect.Type, secret jwtcore.Secret) func(next http.HandlerFunc) http.HandlerFunc {
+const (
+	SourceAuthorization = iota
+	SourceCookie
+)
+
+func JWT(source int, redirect bool, redirectUrl string, payloadType reflect.Type, secret jwtcore.Secret) func(next http.HandlerFunc) http.HandlerFunc {
 	return func(next http.HandlerFunc) http.HandlerFunc {
 		return func(writer http.ResponseWriter, request *http.Request) {
-			header := request.Header.Get("Authorization")
-			if header == "" {
+			token := ""
+
+			switch source {
+			case SourceAuthorization:
+				// TODO: move to func
+				header := request.Header.Get("Authorization")
+				if header == "" {
+					break
+				}
+				if !strings.HasPrefix(header, "Bearer ") {
+					break
+				}
+				token = header[len("Bearer "):]
+			case SourceCookie:
+				// TODO: move to func
+				cookie, err := request.Cookie("token")
+				if err != nil {
+					if err == http.ErrNoCookie {
+						break
+					}
+					break
+				}
+				token = cookie.Value
+			}
+
+			if token == "" {
 				next(writer, request)
 				return
 			}
-
-			if !strings.HasPrefix(header, "Bearer ") {
-				next(writer, request)
-				return
-			}
-
-			token := header[len("Bearer "):]
 
 			ok, err := jwtcore.Verify(token, secret)
 			if err != nil {
@@ -36,6 +58,10 @@ func JWT(payloadType reflect.Type, secret jwtcore.Secret) func(next http.Handler
 			}
 
 			if !ok {
+				if redirect {
+					http.Redirect(writer, request, redirectUrl, http.StatusTemporaryRedirect)
+					return
+				}
 				http.Error(writer, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
 				return
 			}
