@@ -5,16 +5,21 @@ import (
 	"net/http"
 )
 
-func Unauthenticated(vasya func(ctx context.Context) bool) func(next http.HandlerFunc) http.HandlerFunc {
+func UnAuthenticated(vasya func(ctx context.Context) bool, redirect bool, redirectURL string) func(next http.HandlerFunc) http.HandlerFunc {
 	return func(next http.HandlerFunc) http.HandlerFunc {
 		return func(writer http.ResponseWriter, request *http.Request) {
 			if !vasya(request.Context()) {
-				http.Error(writer, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
+				next(writer, request)
 				return
 			}
 
-			next(writer, request)
+			if redirect {
+				http.Redirect(writer, request, redirectURL, http.StatusTemporaryRedirect)
+				return
+			}
+
+			http.Error(writer, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
+			return
 		}
 	}
 }
-
